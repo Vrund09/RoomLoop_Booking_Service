@@ -15,10 +15,13 @@ from app.schemas import (
     BookingCreate,
     BookingOut,
     CancelOut,
+    RecurringCreate,
+    RecurringOut,
     RoomOut,
     serialize_booking,
 )
 from app.services import bookings as booking_service
+from app.services import recurrence as recurrence_service
 
 
 @asynccontextmanager
@@ -60,6 +63,26 @@ def create_booking(
         end=payload.end,
     )
     return serialize_booking(booking)
+
+
+@app.post("/bookings/recurring", response_model=RecurringOut, status_code=201)
+def create_recurring_booking(
+    payload: RecurringCreate,
+    session: Session = Depends(get_session),
+) -> dict:
+    series, created, skipped = recurrence_service.create_recurring(
+        session,
+        room_id=payload.room_id,
+        user=payload.user,
+        start=payload.start,
+        end=payload.end,
+        repeat_until=payload.repeat_until.date(),
+    )
+    return {
+        "series_id": series.id,
+        "created": [serialize_booking(b) for b in created],
+        "skipped": skipped,
+    }
 
 
 @app.delete("/bookings/{booking_id}", response_model=CancelOut)
