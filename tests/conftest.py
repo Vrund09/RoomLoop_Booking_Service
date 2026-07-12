@@ -56,6 +56,20 @@ def session(session_factory):
 
 
 @pytest.fixture
+def freeze_now(monkeypatch):
+    """Freeze `time_utils.local_now` to a fixed naive datetime for all rooms.
+
+    Business code calls `time_utils.local_now(room)` as a module attribute, so
+    patching the attribute here takes effect everywhere.
+    """
+    def _freeze(dt):
+        monkeypatch.setattr("app.time_utils.local_now", lambda room: dt)
+        return dt
+
+    return _freeze
+
+
+@pytest.fixture
 def client(session_factory):
     def override():
         s = session_factory()

@@ -5,7 +5,12 @@ GET /rooms is a bare array of exactly {id, name, capacity}.
 """
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.models import Booking
+from app.time_utils import format_naive_iso, parse_naive_iso
 
 
 class RoomOut(BaseModel):
@@ -16,3 +21,97 @@ class RoomOut(BaseModel):
     id: int
     name: str
     capacity: int
+
+
+def _parse_ts(value):
+    # `mode="before"` guard so Pydantic never applies its own lenient (offset-
+    # accepting) datetime parsing. Only our strict naive-local parser runs.
+    if isinstance(value, str):
+        return parse_naive_iso(value)
+    raise ValueError("Timestamp must be a string.")
+
+
+def _clean_user(value):
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("user must be a non-empty string.")
+    return value.strip()
+
+
+class BookingCreate(BaseModel):
+    room_id: int
+    user: str
+    start: datetime
+    end: datetime
+
+    _v_start = field_validator("start", "end", mode="before")(_parse_ts)
+    _v_user = field_validator("user", mode="before")(_clean_user)
+
+
+class RecurringCreate(BaseModel):
+    room_id: int
+    user: str
+    start: datetime
+    end: datetime
+    repeat_until: datetime  # parsed as a date via the naive-ISO parser below
+
+    _v_user = field_validator("user", mode="before")(_clean_user)
+
+    @field_validator("start", "end", mode="before")
+    @classmethod
+    def _v_times(cls, value):
+        return _parse_ts(value)
+
+    @field_validator("repeat_until", mode="before")
+    @classmethod
+    def _v_until(cls, value):
+        # Accept a bare date (YYYY-MM-DD) or a full naive timestamp; keep the date.
+        if isinstance(value, str) and len(value.strip()) == 10 and "T" not in value:
+            return parse_naive_iso(value.strip() + "T00:00:00")
+        return _parse_ts(value)
+
+
+class BookingOut(BaseModel):
+    id: int
+    room_id: int
+    user: str
+    start: str
+    end: str
+    series_id: int | None
+    status: str
+
+
+class SkippedOut(BaseModel):
+    start: str
+    end: str
+    reason: str
+    conflicts_with: list[int] | None = None
+
+
+class RecurringOut(BaseModel):
+    series_id: int
+    created: list[BookingOut]
+    skipped: list[SkippedOut]
+
+
+class CancelOut(BaseModel):
+    id: int
+    status: str
+
+
+class SeriesCancelOut(BaseModel):
+    series_id: int
+    cancelled_count: int
+    past_left_intact: int
+
+
+def serialize_booking(booking: Booking) -> dict:
+    """The single response serializer — every timestamp goes through here."""
+    return {
+        "id": booking.id,
+        "room_id": booking.room_id,
+        "user": booking.user,
+        "start": format_naive_iso(booking.start),
+        "end": format_naive_iso(booking.end),
+        "series_id": booking.series_id,
+        "status": booking.status,
+    }
