@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import Base, engine, get_session
-from app.errors import AppError
+from app.errors import AppError, UnprocessableError
 from app.models import Room
 from app.schemas import (
     BookingCreate,
@@ -18,8 +18,10 @@ from app.schemas import (
     RecurringCreate,
     RecurringOut,
     RoomOut,
+    SeriesCancelOut,
     serialize_booking,
 )
+from app.time_utils import TimestampError, parse_naive_iso
 from app.services import bookings as booking_service
 from app.services import recurrence as recurrence_service
 
@@ -92,3 +94,45 @@ def cancel_booking(
 ) -> dict:
     booking = booking_service.cancel_single(session, booking_id)
     return {"id": booking.id, "status": booking.status}
+
+
+@app.delete("/series/{series_id}", response_model=SeriesCancelOut)
+def cancel_series(
+    series_id: int,
+    session: Session = Depends(get_session),
+) -> dict:
+    cancelled_count, past_left_intact = booking_service.cancel_series(session, series_id)
+    return {
+        "series_id": series_id,
+        "cancelled_count": cancelled_count,
+        "past_left_intact": past_left_intact,
+    }
+
+
+def _parse_query_ts(value: str | None, field: str) -> "datetime | None":
+    if value is None:
+        return None
+    try:
+        return parse_naive_iso(value)
+    except TimestampError as exc:
+        raise UnprocessableError(f"Invalid '{field}' filter: {exc}") from exc
+
+
+@app.get("/bookings", response_model=list[BookingOut])
+def list_bookings(
+    room_id: int | None = None,
+    user: str | None = None,
+    from_: str | None = Query(default=None, alias="from"),
+    to: str | None = None,
+    include_cancelled: bool = False,
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    bookings = booking_service.list_bookings(
+        session,
+        room_id=room_id,
+        user=user,
+        start_from=_parse_query_ts(from_, "from"),
+        start_to=_parse_query_ts(to, "to"),
+        include_cancelled=include_cancelled,
+    )
+    return [serialize_booking(b) for b in bookings]

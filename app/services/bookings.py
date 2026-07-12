@@ -8,12 +8,13 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import time_utils
 from app.config import MAX_BOOKING_HOURS, STATUS_ACTIVE, STATUS_CANCELLED
 from app.errors import ConflictError, NotFoundError, UnprocessableError
-from app.models import Booking, Room
+from app.models import Booking, BookingSeries, Room
 from app.services.conflicts import find_conflicts
 
 
@@ -94,3 +95,58 @@ def cancel_single(session: Session, booking_id: int) -> Booking:
     session.commit()
     session.refresh(booking)
     return booking
+
+
+def cancel_series(session: Session, series_id: int) -> tuple[int, int]:
+    """Cancel the series and all its FUTURE instances; leave past ones intact.
+
+    "Future" is `instance.start >= now in the room's local timezone`. Returns
+    (cancelled_count, past_left_intact). Idempotent: a second call cancels 0.
+    """
+    series = session.get(BookingSeries, series_id)
+    if series is None:
+        raise NotFoundError(f"Series {series_id} not found.")
+
+    room = session.get(Room, series.room_id)
+    now = time_utils.local_now(room)
+
+    instances = list(
+        session.scalars(select(Booking).where(Booking.series_id == series_id)).all()
+    )
+
+    cancelled_count = 0
+    past_left_intact = 0
+    for booking in instances:
+        if booking.start >= now:
+            if booking.status == STATUS_ACTIVE:
+                booking.status = STATUS_CANCELLED
+                cancelled_count += 1
+        elif booking.status == STATUS_ACTIVE:
+            past_left_intact += 1
+
+    series.status = STATUS_CANCELLED
+    session.commit()
+    return cancelled_count, past_left_intact
+
+
+def list_bookings(
+    session: Session,
+    room_id: int | None = None,
+    user: str | None = None,
+    start_from: datetime | None = None,
+    start_to: datetime | None = None,
+    include_cancelled: bool = False,
+) -> list[Booking]:
+    stmt = select(Booking)
+    if room_id is not None:
+        stmt = stmt.where(Booking.room_id == room_id)
+    if user is not None:
+        stmt = stmt.where(Booking.user == user)
+    if start_from is not None:
+        stmt = stmt.where(Booking.start >= start_from)
+    if start_to is not None:
+        stmt = stmt.where(Booking.start <= start_to)
+    if not include_cancelled:
+        stmt = stmt.where(Booking.status == STATUS_ACTIVE)
+    stmt = stmt.order_by(Booking.start, Booking.id)
+    return list(session.scalars(stmt).all())
