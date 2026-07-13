@@ -11,4 +11,5 @@ venv/
 htmlcov/
 .env
 notes.md
+PROJECT_WALKTHROUGH.md
 .DS_Store
