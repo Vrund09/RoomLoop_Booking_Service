@@ -65,6 +65,37 @@ time, no offset, no `Z`, no microseconds.
   where `reason` is `"conflict"` or `"nonexistent_local_time"`. If *every* instance
   is skipped, nothing is saved and the call returns **409**.
 
+## Quick tour (live)
+
+No setup — these run against the deployed demo. Bookable room ids are **3, 4, 9, 17**,
+and timestamps are naive local (`YYYY-MM-DDTHH:MM:SS`, no `Z`/offset). Use a
+future date. The interactive version is at
+[`/docs`](https://roomloop-bba3.onrender.com/docs).
+
+```bash
+BASE=https://roomloop-bba3.onrender.com
+
+# 1. See the rooms
+curl -s "$BASE/rooms"
+
+# 2. Book one — the response "id" is what you cancel with
+curl -s -X POST "$BASE/bookings" -H 'Content-Type: application/json' \
+  -d '{"room_id":9,"user":"vrund","start":"2026-08-05T14:00:00","end":"2026-08-05T15:00:00"}'
+
+# 3. Find your bookings (each item carries its id + status)
+curl -s "$BASE/bookings?user=vrund"
+
+# 4. Cancel by that id (soft delete -> status becomes "cancelled")
+curl -s -X DELETE "$BASE/bookings/1"
+
+# 5. Weekly recurring series (same wall-clock time each week, DST-stable)
+curl -s -X POST "$BASE/bookings/recurring" -H 'Content-Type: application/json' \
+  -d '{"room_id":9,"user":"vrund","start":"2026-08-03T09:00:00","end":"2026-08-03T10:00:00","repeat_until":"2026-08-31"}'
+```
+
+> The free-tier instance sleeps when idle (first request may take ~30s to wake), and
+> demo data is ephemeral — it reseeds on restart, so bookings you create won't persist.
+
 ## How timestamps work
 
 Every booking datetime is stored and returned as a naive local wall-clock time in
