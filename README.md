@@ -6,8 +6,8 @@ a single strong idea: **every booking time is a naive local wall-clock time in t
 room's own timezone, and is never converted to UTC** — which is what fixes the
 "Denver bookings are an hour off" bug.
 
-- **Live demo:** <LIVE_URL> — see [Deployment](#deployment).
-- **Interactive API docs (Swagger):** <LIVE_URL>/docs (also `/docs` on any running server).
+- **Live demo:** https://roomloop-bba3.onrender.com — see [Deployment](#deployment).
+- **Interactive API docs (Swagger):** https://roomloop-bba3.onrender.com/docs (also `/docs` on any running server).
 
 ## Why REST (not a CLI)
 
@@ -83,7 +83,7 @@ Deployed on Render's free tier (Docker runtime) via the checked-in
 env vars or disks needed. The container seeds SQLite on startup and honors the
 host-injected `PORT` (defaulting to 8000 for a plain `docker run`).
 
-- **Live demo:** <LIVE_URL> — Swagger at <LIVE_URL>/docs.
+- **Live demo:** https://roomloop-bba3.onrender.com — Swagger at https://roomloop-bba3.onrender.com/docs.
 - The free-tier instance sleeps when idle, so the first request after a while may take
   ~30s to wake (cold start).
 - Demo data is ephemeral by design: the database reseeds on each deploy, which is
