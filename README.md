@@ -45,6 +45,27 @@ crosses a spring-forward transition (proving every start stays at `09:00:00`),
 shows a partially-conflicting series being skip-and-reported, demonstrates that
 back-to-back bookings do not conflict, and cancels a whole series in one call.
 
+### Test data (deliverable #2)
+
+The behavior most at risk of being wrong is **weekly recurrence preserving
+wall-clock time across a DST boundary** (the Denver "hour off" bug) — closely
+followed by **R1/R2 atomicity**: skip conflicts, but roll *everything* back on any
+real failure. I constructed test data that targets exactly these:
+
+- **DST wall-clock stability** — `tests/test_dst.py` books a Denver 09:00 series
+  across *both* spring-forward and fall-back, plus a Berlin series across
+  spring-forward, asserting every occurrence stays at `09:00:00`; `demo.sh`/`demo.py`
+  step 3 shows the same live. A separate 02:30 series (step 3b) proves the nonexistent
+  spring-forward hour is skipped with `reason: "nonexistent_local_time"`, not silently
+  shifted.
+- **R1/R2 atomicity** — `tests/test_recurring.py` pre-books one conflicting week and
+  asserts exactly that week is skipped (5 created, 1 reported), and that an
+  all-conflict or unknown-room request writes **zero rows** — proven by counting
+  `bookings`/`booking_series` before and after, not just by the status code.
+
+These are the scenarios I'd expect a naive UTC-based or non-transactional
+implementation to get wrong, which is why the data is built around them.
+
 ## API reference
 
 All timestamps in requests and responses are `YYYY-MM-DDTHH:MM:SS` — naive local
