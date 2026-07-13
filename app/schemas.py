@@ -38,6 +38,19 @@ def _clean_user(value):
 
 
 class BookingCreate(BaseModel):
+    # Example uses naive local time (no offset, no `Z`) so Swagger's "Try it out"
+    # prefills a body that actually validates — see the C1 contract.
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "room_id": 9,
+                "user": "vrund",
+                "start": "2026-08-05T14:00:00",
+                "end": "2026-08-05T15:00:00",
+            }
+        }
+    )
+
     room_id: int
     user: str
     start: datetime
@@ -48,6 +61,19 @@ class BookingCreate(BaseModel):
 
 
 class RecurringCreate(BaseModel):
+    # Naive-local example (no offset/`Z`); `repeat_until` may be a bare date.
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "room_id": 9,
+                "user": "vrund",
+                "start": "2026-08-03T09:00:00",
+                "end": "2026-08-03T10:00:00",
+                "repeat_until": "2026-08-31",
+            }
+        }
+    )
+
     room_id: int
     user: str
     start: datetime
