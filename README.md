@@ -38,6 +38,8 @@ pytest -q          # full suite
 ./demo.sh          # narrated curl walkthrough against a running server
 ```
 
+On Windows, use `python demo.py` (stdlib only).
+
 `demo.sh` lists rooms, books a Denver room, creates a Denver weekly series that
 crosses a spring-forward transition (proving every start stays at `09:00:00`),
 shows a partially-conflicting series being skip-and-reported, demonstrates that
