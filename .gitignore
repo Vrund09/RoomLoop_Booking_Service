@@ -12,4 +12,7 @@ htmlcov/
 .env
 notes.md
 PROJECT_WALKTHROUGH.md
+ROOMLOOP_SPEC.md
+DECISIONS_DRAFT.md
+DECISIONS_HUMAN.md
 .DS_Store
