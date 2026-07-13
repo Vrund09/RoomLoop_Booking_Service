@@ -11,5 +11,6 @@ COPY . .
 EXPOSE 8000
 
 # Seed (idempotent) then serve. SQLite lives on the container's ephemeral disk,
-# which is fine for a demo deployment.
-CMD ["sh", "-c", "python seed.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# which is fine for a demo deployment. Honor $PORT if the host injects one
+# (Render/Railway/Fly do); default to 8000 for plain `docker run`.
+CMD ["sh", "-c", "python seed.py && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

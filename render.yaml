@@ -1,0 +1,10 @@
+# Render Blueprint (infra-as-code) — one-click deploy of the RoomLoop service.
+# New -> Blueprint -> connect this repo. No env vars or disks are required:
+# the container seeds SQLite on startup and honors Render's injected $PORT.
+services:
+  - type: web
+    name: roomloop
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health

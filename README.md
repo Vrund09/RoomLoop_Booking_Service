@@ -6,8 +6,8 @@ a single strong idea: **every booking time is a naive local wall-clock time in t
 room's own timezone, and is never converted to UTC** — which is what fixes the
 "Denver bookings are an hour off" bug.
 
-- **Live demo:** _pending deploy_ — see [Deployment](#deployment).
-- **Interactive API docs (Swagger):** `/docs` on the running server.
+- **Live demo:** <LIVE_URL> — see [Deployment](#deployment).
+- **Interactive API docs (Swagger):** <LIVE_URL>/docs (also `/docs` on any running server).
 
 ## Why REST (not a CLI)
 
@@ -78,9 +78,22 @@ those occurrences are skipped and reported rather than silently shifted.
 
 ## Deployment
 
-The service is a single Docker image with SQLite on the container's ephemeral disk,
-which is fine for a demo (data resets on redeploy). Point any Docker host (e.g.
-Render's free tier, Docker runtime, port 8000) at this repo. Once deployed, put the
-URL at the top of this file and verify `/health`, `/docs`, and `GET /rooms`.
+Deployed on Render's free tier (Docker runtime) via the checked-in
+[`render.yaml`](render.yaml) blueprint — `New -> Blueprint -> connect this repo`, no
+env vars or disks needed. The container seeds SQLite on startup and honors the
+host-injected `PORT` (defaulting to 8000 for a plain `docker run`).
+
+- **Live demo:** <LIVE_URL> — Swagger at <LIVE_URL>/docs.
+- The free-tier instance sleeps when idle, so the first request after a while may take
+  ~30s to wake (cold start).
+- Demo data is ephemeral by design: the database reseeds on each deploy, which is
+  intentional for a throwaway demo service.
+
+Local Docker:
+
+```bash
+docker build -t roomloop .
+docker run -p 8000:8000 roomloop
+```
 
 See [DECISIONS.md](DECISIONS.md) for the design trade-offs and open questions.
